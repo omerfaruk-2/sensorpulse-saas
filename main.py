@@ -1,6 +1,9 @@
 from fastapi import FastAPI, Depends, Header, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy import desc  # Sıralama için eklendi
+from typing import List      # Tip belirleme için eklendi
+from datetime import datetime # Tarih formatı için eklendi
 from database import engine, get_db
 import models
 
@@ -11,6 +14,15 @@ class DeviceCreate(BaseModel):
 class DataLogCreate(BaseModel):
     device_id: str
     value: float
+
+class DataLogResponse(BaseModel):
+    id: str
+    device_id: str
+    value: float
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True# SQLAlchemy modellerini okuyabilmesi için kritik ayar
 
 # Veritabanı tablolarını otomatik olarak oluşturur (SQLite sensorpulse.db dosyasını yaratır)
 models.Base.metadata.create_all(bind=engine)
@@ -98,3 +110,28 @@ def ingest_data(
     db.commit()
     
     return {"mesaj": "Veri başarıyla işlendi", "value": yeni_veri.value}
+
+# --- 5. Cihaz Verilerini Okuma (Dashboard) Uç Noktası ---
+@app.get("/api/data/{device_id}", response_model=List[DataLogResponse])
+def get_device_data(
+    device_id: str,
+    limit: int = 10, # İstemci aksini belirtmezse sadece son 10 veriyi getir
+    db: Session = Depends(get_db),
+    current_tenant: models.Tenant = Depends(verify_api_key)
+):
+    # 1. Güvenlik Kontrolü: Cihaz bu şirkete mi ait? (Yatay Yetki Yükseltme saldırısını önler)
+    cihaz = db.query(models.Device).filter(
+        models.Device.id == device_id,
+        models.Device.tenant_id == current_tenant.id
+    ).first()
+    
+    if not cihaz:
+        raise HTTPException(status_code=404, detail="Cihaz bulunamadi veya yetkiniz yok!")
+        
+    # 2. Sorgu: Verileri tarihe göre yeniden eskiye (DESC) sırala ve limitle
+    veriler = db.query(models.DataLog).filter(
+        models.DataLog.device_id == device_id,
+        models.DataLog.tenant_id == current_tenant.id
+    ).order_by(desc(models.DataLog.timestamp)).limit(limit).all()
+    
+    return veriler
