@@ -135,3 +135,24 @@ def get_device_data(
     ).order_by(desc(models.DataLog.timestamp)).limit(limit).all()
     
     return veriler
+
+# --- 6. Cihaz Silme Uç Noktası (DELETE) ---
+@app.delete("/api/devices/{device_id}")
+def delete_device(
+    device_id: str, 
+    db: Session = Depends(get_db), 
+    current_tenant: models.Tenant = Depends(verify_api_key)
+):
+    # Silinecek cihazı bul ve bu şirkete ait olduğundan emin ol
+    cihaz = db.query(models.Device).filter(
+        models.Device.id == device_id,
+        models.Device.tenant_id == current_tenant.id
+    ).first()
+    
+    if not cihaz:
+        raise HTTPException(status_code=404, detail="Cihaz bulunamadı veya silme yetkiniz yok!")
+        
+    db.delete(cihaz)
+    db.commit()
+    
+    return {"mesaj": f"{cihaz.device_name} isimli cihaz başarıyla silindi."}
