@@ -182,6 +182,6 @@ def delete_device(
         raise HTTPException(status_code=404, detail="Cihaz bulunamadı veya silme yetkiniz yok!")
         
     db.delete(cihaz)
-    db.commit()
+    db.commit() 
     
-    return {"mesaj": f"{cihaz.device_name} isimli cihaz başarıyla silindi."}
+    return {"mesaj": f"{cihaz.device_name} isimli cihaz başariyla silindi."}
