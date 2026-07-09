@@ -5,7 +5,7 @@ import pandas as pd
 # Sayfa ayarları
 st.set_page_config(page_title="SensorPulse Admin", page_icon="🚀", layout="wide")
 
-st.title("🚀 SensorPulse Yönetim ve İzleme Paneli")
+st.title(" SensorPulse Yönetim ve İzleme Paneli")
 st.markdown("API Key'inizi kullanarak cihazlarınızı yönetebilir ve verileri canlı izleyebilirsiniz.")
 
 # Yan menü (Sidebar)

@@ -6,6 +6,9 @@ from typing import List      # Tip belirleme için eklendi
 from datetime import datetime # Tarih formatı için eklendi
 from database import engine, get_db
 import models
+import logging
+import time
+from fastapi import Request
 
 class DeviceCreate(BaseModel):
     device_name: str
@@ -34,10 +37,36 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# --- LOGLAMA (LOGGING) AYARLARI ---
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+# --- MIDDLEWARE (Tüm İstekleri Yakalayan Ara Katman) ---
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    
+    # İstek işlenmesi için asıl uç noktaya (endpoint) gönderiliyor
+    response = await call_next(request)
+    
+    process_time = time.time() - start_time
+    
+    # İstek tamamlandıktan sonra sonucu logluyoruz
+    logger.info(
+        f"IP: {request.client.host} | Method: {request.method} | "
+        f"Path: {request.url.path} | Status: {response.status_code} | "
+        f"Time: {process_time:.4f}s"
+    )
+    
+    return response
+
 # 1. Kök Dizin (Health Check) Uç Noktası
 @app.get("/")
 def read_root():
-    return {"mesaj": "SensorPulse API sorunsuz çalışıyor!", "durum": "aktif"}
+    return {"mesaj": "SensorPulse API sorunsuz çalisiyor!", "durum": "aktif"}
 
 # 2. Yeni Bir Şirket (Tenant) Kayıt Uç Noktası
 @app.post("/api/tenants/")
@@ -63,7 +92,7 @@ def verify_api_key(x_api_key: str = Header(...), db: Session = Depends(get_db)):
     if not tenant:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Geçersiz veya eksik API Anahtarı!"
+            detail="Geçersiz veya eksik API Anahtari!"
         )
     return tenant
 
@@ -99,7 +128,7 @@ def ingest_data(
     ).first()
     
     if not cihaz:
-        raise HTTPException(status_code=404, detail="Cihaz bulunamadı veya size ait değil!")
+        raise HTTPException(status_code=404, detail="Cihaz bulunamadi veya size ait değil!")
         
     yeni_veri = models.DataLog(
         device_id=cihaz.id,
@@ -109,7 +138,7 @@ def ingest_data(
     db.add(yeni_veri)
     db.commit()
     
-    return {"mesaj": "Veri başarıyla işlendi", "value": yeni_veri.value}
+    return {"mesaj": "Veri başariyla işlendi", "value": yeni_veri.value}
 
 # --- 5. Cihaz Verilerini Okuma (Dashboard) Uç Noktası ---
 @app.get("/api/data/{device_id}", response_model=List[DataLogResponse])
