@@ -1,0 +1,36 @@
+name: SensorPulse CI Pipeline
+
+# 1. Tetikleyiciler (Triggers): Bu otomasyon ne zaman çalışacak?
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+
+# 2. İşler (Jobs): Sunucuda hangi adımlar sırayla yürütülecek?
+jobs:
+  build-and-test:
+    # GitHub arka planda gıcır gıcır bir Ubuntu Linux sunucusu kiralıyor
+    runs-on: ubuntu-latest
+
+    steps:
+    # Adım 1: GitHub sunucusuna bizim kodlarımızı indir (Check out)
+    - name: Depoyu Klonla
+      uses: actions/checkout@v4
+
+    # Adım 2: Sunucuya Python ortamını kur
+    - name: Python Ortamını Hazırla
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    # Adım 3: Bağımlılıkları (kütüphaneleri) yükle ve test et
+    - name: Bağımlılıkları Kur
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    # Adım 4: Mühendislik Kontrolü - Docker konfigürasyonumuz geçerli mi?
+    # Kodlarda bir yazım hatası veya Compose dosyasında bir eksik varsa yakalar
+    - name: Docker Compose Dosyasını Doğrula
+      run: docker compose config
