@@ -8,7 +8,7 @@ Proje, modern yazılım geliştirme yaşam döngüsü (SDLC) prensiplerine sadı
 
 Sistem üç ana katmandan oluşmaktadır:
 
-1.  **Arka Uç (Backend) - FastAPI (Python):** Asenkron (async/await) yapısı sayesinde donanımı yormadan aynı anda on binlerce HTTP isteğini işleyebilir.
+1.  **Backend - FastAPI (Python):** Asenkron (async/await) yapısı sayesinde donanımı yormadan aynı anda on binlerce HTTP isteğini işleyebilir.
 2.  **Veritabanı Katmanı - SQLAlchemy ORM:** Nesne-ilişkisel eşleme kullanılarak veritabanı şemaları oluşturulmuştur. (Şu an geliştirme için SQLite kullanılmaktadır, üretim ortamı için PostgreSQL hedeflenmektedir).
 3.  **Ön Yüz / Yönetim Paneli - Streamlit:** Saf Python ile yazılmış, API ile entegre çalışan gerçek zamanlı bir B2B gösterge panelidir.
 4.  **Altyapı ve Dağıtım - Docker & Docker Compose:** "Benim bilgisayarımda çalışıyordu" sorununu ortadan kaldırmak için sistem tamamen konteynerleştirilmiştir.
