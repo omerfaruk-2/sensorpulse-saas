@@ -27,6 +27,11 @@ Sistem RESTful mimari standartlarına tam uyumlu olarak tasarlanmıştır:
 * `POST /api/data/`: Sensörlerden gelen anlık ölçüm verilerini (Data Ingestion) sisteme kaydeder.
 * `DELETE /api/devices/{device_id}`: Cihazı sistemden kalıcı olarak siler.
 
+##  Tasarım ve Mühendislik Kararları
+
+* **Veri Minimizasyonu (Tenant ID Gizliliği):** İstemciye (Client) dönen yanıtlarda (GET isteklerinde) şirketlere ait `tenant_id` bilgisi güvenlik gereği özellikle gizlenmiştir. İstemci kendi API Key'i ile bağlandığı için sistem izolasyonu arka planda yönetir; bu sayede hem gereksiz veri transferi (bant genişliği israfı) önlenir hem de sistemin iç şeması dışarıya sızdırılmaz.
+* **Veri Yaşam Döngüsü ve Temizlik:** IoT projelerinde veritabanının kontrolsüzce şişmesini engellemek kritik olduğundan, cihaz silme (DELETE) mekanizması kurgulanmıştır. (Mevcut yapıda veriler doğrudan silinmektedir, ancak daha büyük çaplı bir üretim ortamında `is_active=False` etiketlemesiyle "Soft Delete" yapısına geçiş planlanmaktadır).
+
 ##  Nasıl Çalıştırılır? (Docker Kurulumu)
 
 Projeyi ayağa kaldırmak için bilgisayarınızda Docker'ın yüklü olması yeterlidir.
@@ -34,3 +39,8 @@ Projeyi ayağa kaldırmak için bilgisayarınızda Docker'ın yüklü olması ye
 1. Depoyu bilgisayarınıza klonlayın:
    ```bash
    git clone [https://github.com/omerfaruk-2/sensorpulse-saas.git](https://github.com/omerfaruk-2/sensorpulse-saas.git)
+
+2. Proje dizinine girip konteynerleri başlatın: docker-compose up -d --build
+3. Servislere erişin:
+API Dokümantasyonu (Swagger): http://localhost:8000/docs
+Yönetim Paneli (Streamlit): Yeni bir terminalde streamlit run dashboard.py komutunu çalıştırarak panele erişebilirsiniz.
