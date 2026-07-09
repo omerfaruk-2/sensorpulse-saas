@@ -1,18 +1,26 @@
+import os
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
-# Geliştirme aşamasında SQLite kullanıyoruz, ileride Docker'da PostgreSQL'e çevireceğiz.
-SQLALCHEMY_DATABASE_URL = "sqlite:///./sensorpulse.db"
-
-engine = create_engine(
-    # SQLite'a özel: Birden fazla thread'in aynı anda erişebilmesi için gerekli
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+# Docker içindeki environment değerini oku, bulamazsan yerel SQLite'a düş (Fallback mekanizması)
+SQLALCHEMY_DATABASE_URL = os.getenv(
+    "DATABASE_URL", 
+    "sqlite:///./sensorpulse.db"
 )
+
+# PostgreSQL ve SQLite için engine ayarlarını güvenli şekilde yapıyoruz
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+    )
+else:
+    engine = create_engine(SQLALCHEMY_DATABASE_URL)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
-# Veritabanı oturumu (Session) yönetimi için bağımlılık fonksiyonu
 def get_db():
     db = SessionLocal()
     try:

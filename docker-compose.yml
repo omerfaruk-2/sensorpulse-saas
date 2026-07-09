@@ -1,12 +1,32 @@
 version: '3.8'
 
 services:
-  web:
+  # 1. Veritabanı Servisimiz (PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    container_name: sensorpulse_db
+    environment:
+      POSTGRES_USER: sensoruser
+      POSTGRES_PASSWORD: supersecretpassword
+      POSTGRES_DB: sensorpulse
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  # 2. API Servisimiz (FastAPI)
+  api:
     build: .
     container_name: sensorpulse_api
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
     environment:
-      - PYTHONUNBUFFERED=1
+      # Ağ Programlama Notu: Konteynerler arası iletişimde 'localhost' yerine servis adı olan 'db' kullanılır!
+      DATABASE_URL: postgresql://sensoruser:supersecretpassword@db:5432/sensorpulse
+    depends_on:
+      - db
+    restart: always
+
+volumes:
+  postgres_data:
