@@ -6,5 +6,5 @@ venv/
 ENV/
 .env
 .pytest_cache/
-.db
 *.db
+sensorpulse.db

@@ -1,7 +1,11 @@
 import os
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
+# .env dosyasındaki ortam değişkenlerini yükle (local geliştirme için)
+load_dotenv()
 
 # Docker içindeki environment değerini oku, bulamazsan yerel SQLite'a düş (Fallback mekanizması)
 SQLALCHEMY_DATABASE_URL = os.getenv(

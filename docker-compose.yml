@@ -6,9 +6,9 @@ services:
     image: postgres:15-alpine
     container_name: sensorpulse_db
     environment:
-      POSTGRES_USER: sensoruser
-      POSTGRES_PASSWORD: supersecretpassword
-      POSTGRES_DB: sensorpulse
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
@@ -23,7 +23,9 @@ services:
       - "8000:8000"
     environment:
       # Ağ Programlama Notu: Konteynerler arası iletişimde 'localhost' yerine servis adı olan 'db' kullanılır!
-      DATABASE_URL: postgresql://sensoruser:supersecretpassword@db:5432/sensorpulse
+      DATABASE_URL: ${DATABASE_URL}
+      ADMIN_API_KEY: ${ADMIN_API_KEY}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
     depends_on:
       - db
     restart: always

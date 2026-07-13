@@ -1,6 +1,21 @@
 import streamlit as st
 import requests
 import pandas as pd
+import os
+import re
+
+# API base URL'i environment variable'dan oku (SSRF koruması: hardcoded localhost kaldırıldı)
+API_BASE = os.getenv("API_BASE_URL", "http://localhost:8000")
+
+# UUID format doğrulama fonksiyonu (Path Traversal / SSRF koruması)
+UUID_PATTERN = re.compile(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    re.IGNORECASE
+)
+
+def is_valid_uuid(value: str) -> bool:
+    """Verilen string'in geçerli UUID formatında olup olmadığını kontrol eder."""
+    return bool(UUID_PATTERN.match(value.strip()))
 
 # Sayfa ayarları
 st.set_page_config(page_title="SensorPulse Admin", page_icon="🚀", layout="wide")
@@ -26,30 +41,33 @@ if api_key:
         device_id_to_watch = st.text_input("İzlenecek Cihaz ID:")
         
         if device_id_to_watch:
-            with st.spinner("Veriler API'den çekiliyor..."):
-                response = requests.get(f"http://localhost:8000/api/data/{device_id_to_watch}", headers=headers)
-                
-            if response.status_code == 200:
-                veriler = response.json()
-                
-                if len(veriler) > 0:
-                    st.success(f"{len(veriler)} adet veri başarıyla çekildi!")
-                    df = pd.DataFrame(veriler)
-                    df['timestamp'] = pd.to_datetime(df['timestamp'])
-                    df = df.set_index('timestamp')
-                    
-                    col1, col2 = st.columns([1, 2])
-                    with col1:
-                        st.metric(label="Son Sensör Değeri", value=f"{df['value'].iloc[0]}")
-                        st.dataframe(df[['value']].head(10))
-                    with col2:
-                        st.line_chart(df['value'])
-                else:
-                    st.warning("Bu cihaza ait henüz hiç veri yok.")
-            elif response.status_code == 404:
-                st.error("❌ Cihaz bulunamadı veya size ait değil!")
+            if not is_valid_uuid(device_id_to_watch):
+                st.error("❌ Geçersiz Cihaz ID formatı! UUID formatında olmalıdır (örn: 550e8400-e29b-41d4-a716-446655440000).")
             else:
-                st.error(f"Hata: Geçersiz API Key veya sistem hatası ({response.status_code})")
+                with st.spinner("Veriler API'den çekiliyor..."):
+                    response = requests.get(f"{API_BASE}/api/data/{device_id_to_watch.strip()}", headers=headers)
+                    
+                if response.status_code == 200:
+                    veriler = response.json()
+                    
+                    if len(veriler) > 0:
+                        st.success(f"{len(veriler)} adet veri başarıyla çekildi!")
+                        df = pd.DataFrame(veriler)
+                        df['timestamp'] = pd.to_datetime(df['timestamp'])
+                        df = df.set_index('timestamp')
+                        
+                        col1, col2 = st.columns([1, 2])
+                        with col1:
+                            st.metric(label="Son Sensör Değeri", value=f"{df['value'].iloc[0]}")
+                            st.dataframe(df[['value']].head(10))
+                        with col2:
+                            st.line_chart(df['value'])
+                    else:
+                        st.warning("Bu cihaza ait henüz hiç veri yok.")
+                elif response.status_code == 404:
+                    st.error("❌ Cihaz bulunamadı veya size ait değil!")
+                else:
+                    st.error(f"Hata: Geçersiz API Key veya sistem hatası ({response.status_code})")
 
     # --- SEKME 2: CİHAZ EKLE (POST) ---
     with tab2:
@@ -62,7 +80,7 @@ if api_key:
             if submit_button:
                 if new_device_name and new_device_type:
                     payload = {"device_name": new_device_name, "device_type": new_device_type}
-                    res = requests.post("http://localhost:8000/api/devices/", json=payload, headers=headers)
+                    res = requests.post(f"{API_BASE}/api/devices/", json=payload, headers=headers)
                     
                     if res.status_code == 200:
                         st.success(f"✅ Cihaz başarıyla eklendi! Cihaz ID: {res.json().get('device_id')}")
@@ -82,15 +100,18 @@ if api_key:
             
             if send_data_button:
                 if target_device_id:
-                    payload = {"device_id": target_device_id, "value": sensor_value}
-                    res = requests.post("http://localhost:8000/api/data/", json=payload, headers=headers)
-                    
-                    if res.status_code == 200:
-                        st.success(f"✅ Veri başarıyla işlendi! Değer: {res.json().get('value')}")
-                    elif res.status_code == 404:
-                        st.error("❌ Cihaz bulunamadı veya yetkiniz yok!")
+                    if not is_valid_uuid(target_device_id):
+                        st.error("❌ Geçersiz Cihaz ID formatı! UUID formatında olmalıdır.")
                     else:
-                        st.error(f"Veri gönderilemedi. Hata Kodu: {res.status_code}")
+                        payload = {"device_id": target_device_id.strip(), "value": sensor_value}
+                        res = requests.post(f"{API_BASE}/api/data/", json=payload, headers=headers)
+                        
+                        if res.status_code == 200:
+                            st.success(f"✅ Veri başarıyla işlendi! Değer: {res.json().get('value')}")
+                        elif res.status_code == 404:
+                            st.error("❌ Cihaz bulunamadı veya yetkiniz yok!")
+                        else:
+                            st.error(f"Veri gönderilemedi. Hata Kodu: {res.status_code}")
                 else:
                     st.warning("Lütfen hedef cihaz ID'sini girin.")
 
@@ -103,14 +124,17 @@ if api_key:
             
             if delete_button:
                 if device_id_to_delete:
-                    res = requests.delete(f"http://localhost:8000/api/devices/{device_id_to_delete}", headers=headers)
-                    
-                    if res.status_code == 200:
-                        st.success(f"✅ Cihaz başarıyla silindi!")
-                    elif res.status_code == 404:
-                        st.error("❌ Cihaz bulunamadı veya silme yetkiniz yok!")
+                    if not is_valid_uuid(device_id_to_delete):
+                        st.error("❌ Geçersiz Cihaz ID formatı! UUID formatında olmalıdır.")
                     else:
-                        st.error(f"Silme işlemi başarısız. Hata Kodu: {res.status_code}")
+                        res = requests.delete(f"{API_BASE}/api/devices/{device_id_to_delete.strip()}", headers=headers)
+                        
+                        if res.status_code == 200:
+                            st.success(f"✅ Cihaz başarıyla silindi!")
+                        elif res.status_code == 404:
+                            st.error("❌ Cihaz bulunamadı veya silme yetkiniz yok!")
+                        else:
+                            st.error(f"Silme işlemi başarısız. Hata Kodu: {res.status_code}")
                 else:
                     st.warning("Lütfen silinecek cihazın ID'sini girin.")
 else:
